@@ -1,0 +1,5 @@
+package tagcontroller
+
+func Index() {
+
+}
