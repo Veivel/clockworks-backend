@@ -2,6 +2,7 @@ package eventcontroller
 
 import (
 	"clockworks-backend/models"
+	"clockworks-backend/utils"
 	"fmt"
 
 	"github.com/gin-gonic/gin"
@@ -54,10 +55,14 @@ func Create(c *gin.Context) {
 
 	err := c.BindJSON(&body)
 
-	if err != nil || hasInvalidField(body) {
+	if err != nil || utils.HasInvalidField(body) {
 		fmt.Println("error creating. body: ", body)
 		c.JSON(400, gin.H{
 			"message": "Invalid body.",
+		})
+	} else if utils.GetUser(body.AuthorUsername).Username == "" {
+		c.JSON(400, gin.H{
+			"message": "Invalid user.",
 		})
 	} else {
 		// structs are DEEP-COPIED by default. wowzers???
@@ -90,13 +95,17 @@ func Update(c *gin.Context) {
 		c.JSON(400, gin.H{
 			"message": "Invalid body.",
 		})
+	} else if utils.GetUser(body.AuthorUsername).Username == "" {
+		c.JSON(400, gin.H{
+			"message": "Invalid user.",
+		})
 	} else {
 		models.DB.Find("id = ?", id).First(&event)
 
 		var newEvent = models.Event{
-			// Id:             event.Id,
-			Title:          compareField(event.Title, body.Title),
-			AuthorUsername: compareField(event.AuthorUsername, body.AuthorUsername),
+			Id:             event.Id,
+			Title:          utils.CheckForEmptyField(event.Title, body.Title),
+			AuthorUsername: utils.CheckForEmptyField(event.AuthorUsername, body.AuthorUsername),
 			UseWhitelist:   true,
 		}
 
@@ -127,21 +136,4 @@ func Delete(c *gin.Context) {
 			"message": "Successfully deleted event.",
 		})
 	}
-}
-
-// ----- helper functions -----
-
-func compareField(eventField string, bodyField string) string {
-	if bodyField == "" {
-		return eventField
-	} else {
-		return bodyField
-	}
-}
-
-func hasInvalidField(event models.Event) bool {
-	return (event.AuthorUsername == "" ||
-		event.Id == "" ||
-		event.Title == "" ||
-		len(event.Id) < 4)
 }

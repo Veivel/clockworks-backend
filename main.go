@@ -1,7 +1,9 @@
 package main
 
 import (
+	"clockworks-backend/controllers/authcontroller"
 	"clockworks-backend/controllers/eventcontroller"
+	"clockworks-backend/middlewares"
 	"clockworks-backend/models"
 	"fmt"
 	"os"
@@ -13,7 +15,7 @@ import (
 func main() {
 	err := godotenv.Load()
 	if err != nil {
-		fmt.Println(".env file not found. Will proceed and attempt to use environment variables.")
+		fmt.Println(".env file not found. Will proceed and attempt to use existing environment variables.")
 		fmt.Println(os.Getenv("DB_NAME"))
 	}
 
@@ -21,12 +23,18 @@ func main() {
 	models.ConnectDB()
 
 	// Endpoints / Views
-	r.GET("/api/events", eventcontroller.Index)
-	r.GET("/api/count-events/:id", eventcontroller.CountIds)
-	r.GET("/api/event/:id", eventcontroller.Show)
-	r.POST("/api/event", eventcontroller.Create)
-	r.PATCH("/api/event/:id", eventcontroller.Update)
-	r.DELETE("/api/event/:id", eventcontroller.Delete)
+	api := r.Group("/api", middlewares.JWTMiddleware)
+	api.GET("/events", eventcontroller.Index) // admin
+	api.GET("/event/:id", eventcontroller.Show)
+	api.POST("/event", eventcontroller.Create)
+	api.PATCH("/event/:id", eventcontroller.Update)
+	api.DELETE("/event/:id", eventcontroller.Delete)
+	// api.GET("/count-events/:id", eventcontroller.CountIds)
+
+	// Authentication Endpoints
+	r.GET("/auth/users", authcontroller.Index) // admin
+	r.POST("/auth/register", authcontroller.Register)
+	r.POST("/auth/login", authcontroller.Login)
 
 	r.Run()
 }

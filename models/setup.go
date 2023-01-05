@@ -27,7 +27,7 @@ func ConnectDB() {
 		dbName:   os.Getenv("DB_NAME"),
 	}
 
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s",
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=True",
 		creds.username,
 		creds.password,
 		creds.host,
@@ -40,8 +40,10 @@ func ConnectDB() {
 		panic(err)
 	}
 
-	database.AutoMigrate(&Event{})
-
 	DB = database
+
+	DB.AutoMigrate(&Event{}) // 'events' table
+	DB.AutoMigrate(&User{})  // 'users' table
+
 	fmt.Println("Succesfully connected to database.")
 }
