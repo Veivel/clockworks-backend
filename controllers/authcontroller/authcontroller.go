@@ -11,7 +11,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func Index(c *gin.Context) {
+func All(c *gin.Context) {
 	var users []models.User
 
 	models.DB.Find(&users)
@@ -22,7 +22,7 @@ func Index(c *gin.Context) {
 }
 
 func Register(c *gin.Context) {
-	var body models.UserData
+	var body models.User
 
 	err := c.BindJSON(&body)
 	if err != nil || body.Email == "" || body.Password == "" || body.Username == "" {
@@ -58,7 +58,7 @@ func Register(c *gin.Context) {
 
 func Login(c *gin.Context) {
 	var user models.User
-	var body models.UserData
+	var body models.User
 
 	c.BindJSON(&body)
 
@@ -72,7 +72,7 @@ func Login(c *gin.Context) {
 			"message": "Invalid credentials. (incorrect password)",
 		})
 	} else {
-		expTime := time.Now().Add(time.Minute * 10)
+		expTime := time.Now().Add(time.Minute * 60)
 		claims := utils.JWTClaim{
 			Username: user.Username,
 			RegisteredClaims: jwt.RegisteredClaims{
@@ -95,4 +95,15 @@ func Login(c *gin.Context) {
 			})
 		}
 	}
+}
+
+// the only view in Authcontroller that requires an auth header.
+func Profile(c *gin.Context) {
+	username, _ := c.Get("Username")
+	email, _ := c.Get("Email")
+
+	c.JSON(200, gin.H{
+		"username": username,
+		"email":    email,
+	})
 }

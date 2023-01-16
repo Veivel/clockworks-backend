@@ -1,9 +1,30 @@
 package utils
 
-import "clockworks-backend/models"
+import (
+	"clockworks-backend/models"
+	"fmt"
+	"strings"
+	"time"
+)
+
+func GetTime(period string) (clockTime models.ClockTime) {
+	periodArr := strings.Split(period, " ")
+	timeObj, err := time.Parse("15:04", periodArr[1])
+	fmt.Println(timeObj)
+	if err != nil {
+		fmt.Println("Error parsing time from", period)
+	}
+
+	clockTime = models.ClockTime{
+		Day:    periodArr[0],
+		Hour:   int8(timeObj.Hour()),
+		Minute: int8(timeObj.Minute()),
+	}
+	return
+}
 
 /** Return eventField if bodyField is empty. Return bodyField otherwise. */
-func CheckForEmptyField(eventField string, bodyField string) string {
+func GetUpdatedField(eventField string, bodyField string) string {
 	if bodyField == "" {
 		return eventField
 	} else {
@@ -13,8 +34,7 @@ func CheckForEmptyField(eventField string, bodyField string) string {
 
 /** Returns true if there are any invalid fields in event. */
 func HasInvalidField(event models.Event) bool {
-	return (event.AuthorUsername == "" ||
-		event.Id == "" ||
+	return (event.Id == "" ||
 		event.Title == "" ||
 		len(event.Id) < 4)
 }

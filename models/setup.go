@@ -44,6 +44,7 @@ func ConnectDB() {
 
 	DB.AutoMigrate(&Event{}) // 'events' table
 	DB.AutoMigrate(&User{})  // 'users' table
+	DB.AutoMigrate(&Tag{})   // 'tags' table
 
 	fmt.Println("Succesfully connected to database.")
 }

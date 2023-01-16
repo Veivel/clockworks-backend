@@ -8,14 +8,3 @@ type User struct {
 	Email     string    `gorm:"VARCHAR(256)" json:"email"`
 	Password  string    `gorm:"VARCHAR(384)" json:"password"`
 }
-
-type UserData struct {
-	Username string
-	Email    string
-	Password string
-}
-
-// type UserCredentials struct {
-// 	Username string
-// 	Password string
-// }

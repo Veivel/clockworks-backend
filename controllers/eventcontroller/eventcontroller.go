@@ -4,15 +4,27 @@ import (
 	"clockworks-backend/models"
 	"clockworks-backend/utils"
 	"fmt"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
 /** Indexes ALL events. */
-func Index(c *gin.Context) {
+func All(c *gin.Context) {
 	var events []models.Event
 
 	models.DB.Find(&events)
+	c.JSON(200, gin.H{
+		"data": events,
+	})
+}
+
+/** Index all of current user's events. No user matching. */
+func Index(c *gin.Context) {
+	var events []models.Event
+	var user, _ = c.Get("Username")
+
+	models.DB.Where("author_username = ?", user).Find(&events)
 	c.JSON(200, gin.H{
 		"data": events,
 	})
@@ -30,7 +42,7 @@ func CountIds(c *gin.Context) {
 	c.JSON(200, gin.H{"count": count})
 }
 
-/** Return a event with a specified ID */
+/** Return a event with a specified ID. No user matching. */
 func Show(c *gin.Context) {
 	var event models.Event
 	var id = c.Param("id")
@@ -41,6 +53,7 @@ func Show(c *gin.Context) {
 			"id":      id,
 			"message": "No Event with specified ID found.",
 		})
+		return
 	} else {
 		c.JSON(200, gin.H{
 			"data": event,
@@ -48,7 +61,10 @@ func Show(c *gin.Context) {
 	}
 }
 
-/** Creates a new Event, given event data. Handles duplicate ID */
+/*
+* Creates a new Event, given event data.
+Handles duplicate ID. No user matching.
+*/
 func Create(c *gin.Context) {
 	var event models.Event
 	var body models.Event
@@ -60,13 +76,13 @@ func Create(c *gin.Context) {
 		c.JSON(400, gin.H{
 			"message": "Invalid body.",
 		})
-	} else if utils.GetUser(body.AuthorUsername).Username == "" {
-		c.JSON(400, gin.H{
-			"message": "Invalid user.",
-		})
 	} else {
+		// will not be blank. taken care in jwt middleware
+		var username, _ = c.Get("Username")
+
 		// structs are DEEP-COPIED by default. wowzers???
 		event = body
+		event.AuthorUsername = username.(string)
 
 		// if event with identical PK exists, return it. else, create new.
 		models.DB.FirstOrCreate(&body)
@@ -84,7 +100,10 @@ func Create(c *gin.Context) {
 	}
 }
 
-/** Updates an existing event. All fields are optional. */
+/*
+* Updates an existing event.
+All fields are optional. Uses user matching.
+*/
 func Update(c *gin.Context) {
 	var body models.Event
 	var event models.Event
@@ -95,18 +114,21 @@ func Update(c *gin.Context) {
 		c.JSON(400, gin.H{
 			"message": "Invalid body.",
 		})
-	} else if utils.GetUser(body.AuthorUsername).Username == "" {
-		c.JSON(400, gin.H{
-			"message": "Invalid user.",
-		})
 	} else {
 		models.DB.Find("id = ?", id).First(&event)
 
+		// if wrong user
+		username, _ := c.Get("Username")
+		if event.AuthorUsername != username.(string) {
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
 		var newEvent = models.Event{
 			Id:             event.Id,
-			Title:          utils.CheckForEmptyField(event.Title, body.Title),
-			AuthorUsername: utils.CheckForEmptyField(event.AuthorUsername, body.AuthorUsername),
-			UseWhitelist:   true,
+			Title:          utils.GetUpdatedField(event.Title, body.Title), // can change
+			AuthorUsername: event.AuthorUsername,
+			UseWhitelist:   body.UseWhitelist, // can change
 		}
 
 		models.DB.Where("id = ?", id).Assign(newEvent).FirstOrCreate(&event)
@@ -118,17 +140,26 @@ func Update(c *gin.Context) {
 	}
 }
 
+/*
+* Delete an Event with specified ID.
+Performs user matching.
+*/
 func Delete(c *gin.Context) {
 	var event models.Event
 	var id = c.Param("id")
 
 	models.DB.Where("id = ?", id).First(&event)
+	username, _ := c.Get("Username")
 
 	if event.Id == "" {
 		c.JSON(400, gin.H{
 			"id":      id,
 			"message": "Event with specified ID does not exist.",
 		})
+	} else if event.AuthorUsername != username {
+		// wrong user
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
 	} else {
 		models.DB.Delete(&event)
 		c.JSON(200, gin.H{

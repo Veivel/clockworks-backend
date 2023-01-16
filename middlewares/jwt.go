@@ -1,8 +1,8 @@
 package middlewares
 
 import (
+	"clockworks-backend/models"
 	"clockworks-backend/utils"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -25,14 +25,16 @@ func JWTMiddleware(c *gin.Context) {
 	}
 
 	_, tokenString := strings.Split(authHeader, " ")[0], strings.Split(authHeader, " ")[1]
-	// fmt.Println("Auth with", authType, "token")
+	// fmt.Println("Auth with", authType, "token:", tokenString)
 
 	if tokenString == "" {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 			"message": "Invalid auth header.",
 		})
+		return
 	}
-	// parsing token jwt
+
+	// parsing token jwt (and decoding the token user into claims)
 	claims := utils.JWTClaim{}
 	token, err := jwt.ParseWithClaims(tokenString, &claims, jwtKeyFunc)
 
@@ -44,14 +46,15 @@ func JWTMiddleware(c *gin.Context) {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"message": "Invalid token.",
 			})
+			return
 		case jwt.ValidationErrorExpired:
 			// token expired
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"message": "Expired token. Please re-login.",
 			})
+			return
 		default:
 			c.AbortWithStatus(http.StatusUnauthorized)
-			fmt.Println("4")
 			return
 		}
 	}
@@ -61,8 +64,11 @@ func JWTMiddleware(c *gin.Context) {
 		return
 	}
 
-	// var user models.User
-	// models.DB.First()
-	// c.Set("User", )
+	// if successful, get current user
+	var user models.User
+	models.DB.Where("username = ?", claims.Username).Find(&user)
+	c.Set("Username", user.Username)
+	c.Set("Email", user.Email)
+
 	c.Next()
 }
